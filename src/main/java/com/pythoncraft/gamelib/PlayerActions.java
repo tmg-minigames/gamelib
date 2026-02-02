@@ -40,14 +40,14 @@ public class PlayerActions {
 
             if (food != null) {i.setItem(40, food);} // food in offhand
             if (giveCompass) {
-                TrackingCompass compass = CompassManager.getInstance().createTrackingCompass();
+                TrackingCompass compass = CompassManager.getInstance().createTrackingCompass(player);
                 if (compassTarget != null) {
                     compass.track(players.stream().filter(p -> {return p != player;}).findFirst().orElse(null));
                 } else {
                     compass.track(compassTarget);
                 }
 
-                i.setItem(0, compass.getItem());
+                i.setItem(0, compass.createItem());
             }
         };
     }

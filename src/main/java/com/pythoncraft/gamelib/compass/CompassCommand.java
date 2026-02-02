@@ -26,8 +26,8 @@ public class CompassCommand implements CommandExecutor {
             return true;
         }
 
-        TrackingCompass compass = CompassManager.getInstance().createTrackingCompass();
-        inventory.addItem(compass.getItem());
+        TrackingCompass compass = CompassManager.getInstance().createTrackingCompass(player);
+        inventory.addItem(compass.createItem());
 
         if (args.length == 1) {
             Player target = Bukkit.getPlayer(args[0]);

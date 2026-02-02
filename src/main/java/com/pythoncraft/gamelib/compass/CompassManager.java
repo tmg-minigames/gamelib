@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -60,14 +61,10 @@ public class CompassManager implements Listener {
 
     public CompassManager(String showCoordsPattern) {this(showCoordsPattern, ShowWhen.IN_INVENTORY);}
 
-    public CompassManager(ShowWhen showWhen) {this("§7Tracking §a{TARGET} §7at §f{X} {Y} {Z}", showWhen);}
-
-    public CompassManager() {this(ShowWhen.IN_INVENTORY);}
-
     public static CompassManager getInstance() {return instance;}
 
-    public TrackingCompass createTrackingCompass() {
-        TrackingCompass compass = new TrackingCompass();
+    public TrackingCompass createTrackingCompass(Player owner) {
+        TrackingCompass compass = new TrackingCompass(owner);
         this.addCompass(compass);
         return compass;
     }
@@ -133,12 +130,12 @@ public class CompassManager implements Listener {
     }
     
     public void update() {
+        for (TrackingCompass compass : activeCompasses.values()) {
+            compass.updateDirection();
+        }
+
         for (Player player : Bukkit.getOnlinePlayers()) {
             Inventory inventory = player.getInventory();
-
-            for (TrackingCompass compass : activeCompasses.values()) {
-                compass.updateDirection(player);
-            }
 
             switch (showWhen) {
                 case IN_INVENTORY -> {
@@ -221,5 +218,40 @@ public class CompassManager implements Listener {
         Chat.message(player, "§aNow tracking §f" + trackedPlayer.getName() + "§a.");
 
         player.closeInventory();
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        
+        handleCompassMove(player, event.getCurrentItem(), event, true);
+        handleCompassMove(player, event.getCursor(), event, false);
+    }
+
+    private void handleCompassMove(Player player, ItemStack item, InventoryClickEvent event, boolean isClickedItem) {
+        if (!TrackingCompass.isTrackingCompass(item)) return;
+        
+        String uuid = TrackingCompass.getCompassUUID(item);
+        if (activeCompasses.get(uuid) == null) return;
+        
+        boolean isExternalInventory = event.getClickedInventory() != null
+            && event.getClickedInventory().getType() != InventoryType.PLAYER
+            && event.getClickedInventory().getType() != InventoryType.CRAFTING;
+        
+        boolean shouldRemove = isClickedItem
+            ? (event.isShiftClick() && event.getClickedInventory() != null 
+               && event.getClickedInventory().getType() == InventoryType.PLAYER
+               && event.getView().getTopInventory().getType() != InventoryType.CRAFTING)
+            : isExternalInventory;
+        
+        if (shouldRemove) {
+            event.setCancelled(true);
+            if (isClickedItem) {
+                item.setAmount(0);
+            } else {
+                player.setItemOnCursor(null);
+            }
+            removeCompass(uuid);
+        }
     }
 }
