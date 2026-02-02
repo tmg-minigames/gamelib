@@ -112,6 +112,7 @@ public class GameLib extends JavaPlugin {
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         Team team = scoreboard.getTeam(id);
         if (team != null) {team.unregister();}
+        
         team = scoreboard.registerNewTeam(id);
         team.displayName(Chat.component(displayName));
         team.color(color);

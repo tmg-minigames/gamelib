@@ -1,6 +1,8 @@
 package com.pythoncraft.gamelib;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
@@ -65,6 +67,12 @@ public class Chat {
 
     public static Component component(String message) {
         return Component.text(c(message));
+    }
+
+    public static List<Component> components(List<String> messages) {
+        List<Component> components = new ArrayList<>();
+        for (String msg : messages) {components.add(component(msg));}
+        return components;
     }
 
     public static NamespacedKey namespacedKey(String key, boolean isMinecraftKey) {

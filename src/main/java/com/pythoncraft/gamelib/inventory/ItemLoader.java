@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.bukkit.Color;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ArmorMeta;
 import org.bukkit.inventory.meta.Damageable;
@@ -37,21 +38,19 @@ public class ItemLoader {
         if (itemsSection == null) {return items;}
 
         for (String key : itemsSection.getKeys(false)) {
-            // Logger.info("Processing key: " + key);
-            
             ConfigurationSection itemSection = itemsSection.getConfigurationSection(key);
             ItemStack itemStack;
             
             if (itemSection == null) {
                 // Short version: `stick * 64`
-                itemStack = loadShortItemStack(itemsSection.getString(key));
+                itemStack = loadShort(itemsSection.getString(key));
             } else {
-                // Full version: use loadItemSection method
-                itemStack = loadItemSection(itemSection);
+                // Full version: use loadLong method
+                itemStack = loadLong(itemSection, null);
             }
             
             if (itemStack == null) {
-                // Logger.warn("Failed to load item for key: " + key);
+                Logger.warn("Failed to load item for key: " + key);
                 continue;
             }
 
@@ -66,6 +65,38 @@ public class ItemLoader {
         return new ArrayList<>(loadItemsMap(itemsSection).values());
     }
 
+    public static HashMap<String, ItemSet> loadItemSetsMap(ConfigurationSection itemsSection) {
+        HashMap<String, ItemSet> items = new HashMap<>();
+        if (itemsSection == null) {return items;}
+
+        for (String key : itemsSection.getKeys(false)) {
+            ConfigurationSection itemSection = itemsSection.getConfigurationSection(key);
+            ItemSet itemSet;
+            
+            if (itemSection == null) {
+                // Short version: `stick * 64;dirt * 32`
+                itemSet = loadShortSet(itemsSection.getString(key));
+            } else {
+                // Full version: use loadSet method
+                itemSet = loadSet(itemSection);
+            }
+            
+            if (itemSet == null) {
+                Logger.warn("Failed to load item set for key: " + key);
+                continue;
+            }
+
+            items.put(key, itemSet);
+            // Logger.info("Loaded item set with " + itemSet.size() + " items.");
+        }
+
+        return items;
+    }
+
+    public static List<ItemSet> loadItemSets(ConfigurationSection itemsSection) {
+        return new ArrayList<>(loadItemSetsMap(itemsSection).values());
+    }
+
     public static HashMap<String, ItemTemplate> loadConditionalItemsMap(ConfigurationSection templatesSection, HashMap<String, Predicate<Player>> conditions) {
         HashMap<String, ItemTemplate> templates = new HashMap<>();
         if (templatesSection == null) {return templates;}
@@ -77,19 +108,18 @@ public class ItemLoader {
             
             if (itemSection == null) {
                 // Short version: `stick * 64`
-                template = loadShortItemTemplate(templatesSection.getString(itemKey));
+                template = new ItemTemplate(loadShort(templatesSection.getString(itemKey)));
             } else {
                 // Full version
-                template = loadConditionalItemSection(itemSection, conditions);
+                template = loadConditional(itemSection, conditions);
             }
 
             if (template == null) {
-                // Logger.warn("Failed to load item template for key: " + itemKey);
+                Logger.warn("Failed to load item template for key: " + itemKey);
                 continue;
             }
 
             templates.put(itemKey, template);
-            // Logger.info("Loaded item: " + template.getIndexed(0).getType().toString());
         }
 
         return templates;
@@ -99,159 +129,210 @@ public class ItemLoader {
         return new ArrayList<>(loadConditionalItemsMap(templatesSection, conditions).values());
     }
 
-    public static ItemStack loadShortItemStack(String item) {
-        if (item == null || item.isEmpty()) {return null;}
+
+    public static ItemStack loadShort(String itemString) {
+        if (itemString == null || itemString.isEmpty()) {return GameLib.getItemStack(Chat.c("§c§o§lInvalid item string"));}
 
         int count = 1;
-        if (item.contains("*")) {
-            String[] parts = item.split("\\*");
-            item = parts[0].trim();
+        if (itemString.contains("*")) {
+            String[] parts = itemString.split("\\*");
+            itemString = parts[0].trim();
             count = Integer.parseInt(parts[1].trim());
         }
-        Material itemMaterial = Material.getMaterial(item.toUpperCase());
-        if (itemMaterial == null) {itemMaterial = GameLib.DEFAULT_MATERIAL;}
+        Material itemMaterial = Material.getMaterial(itemString.toUpperCase());
+        if (itemMaterial == null) {return GameLib.getItemStack(Chat.c("§c§o§lUnknown material: " + itemString));}
+
         ItemStack itemStack = new ItemStack(itemMaterial);
         itemStack.setAmount(count);
-
         return itemStack;
     }
 
-    public static ItemTemplate loadShortItemTemplate(String item) {
-        return new ItemTemplate(loadShortItemStack(item));
+    public static ItemSet loadShortSet(String items) {
+        if (items == null || items.isEmpty()) {return null;}
+        List<ItemStack> itemList = new ArrayList<>();
+
+        for (String item : items.split(";")) {
+            itemList.add(loadShort(item.trim()));
+        }
+
+        return new ItemSet(itemList);
     }
 
-    public static ItemStack loadItemSection(ConfigurationSection itemSection, ItemStack baseItem) {
-        if (itemSection == null) {return null;}
-
-        String itemId = itemSection.getString("id");
-        String itemName = itemSection.getString("custom-name") != null ? itemSection.getString("custom-name") : null;
-        Material itemMaterial = itemId != null ? Material.getMaterial(itemId.toUpperCase()) : null;
-        if (itemMaterial == null) {itemMaterial = Material.STICK;}
-        Integer count = itemSection.getInt("count", 1);
-        HashMap<String, Integer> enchants = new HashMap<>();
-        Integer durability = null;
-        TrimMaterial trimMaterial = null;
-        TrimPattern trimPattern = null;
-        List<PotionEffect> potionEffects = new ArrayList<>();
-        Color potionColor = null;
+    public static ItemStack loadLong(ConfigurationSection section, ItemStack baseItem) {
+        if (section == null) {return null;}
+        
+        String material = section.getString("id", GameLib.DEFAULT_MATERIAL.toString());
+        String customName = section.getString("name", null);
+        List<String> lore = section.getStringList("lore");
+        Material itemMaterial = Material.getMaterial(material.toUpperCase());
+        if (itemMaterial == null) {itemMaterial = GameLib.DEFAULT_MATERIAL;}
+        Integer count = section.getInt("count", 1);
 
         ItemStack itemStack;
-
         if (baseItem != null) {
             itemStack = baseItem.clone();
+            itemStack.setAmount(count);
         } else {
-            itemStack = new ItemStack(itemMaterial);
+            itemStack = GameLib.getItemStack(itemMaterial, count, customName);
         }
 
-        ItemMeta itemMeta = itemStack.getItemMeta();
+        ItemMeta meta = itemStack.getItemMeta();
 
-        if (itemName != null && !itemName.isEmpty()) {
-            itemMeta.displayName(Chat.component(itemName));
+        if (customName != null && !customName.isEmpty()) {
+            meta.displayName(Chat.component(customName));
         }
 
-        var enchantments = itemSection.getConfigurationSection("enchantments");
-        if (enchantments != null) {
-            for (String enchantKey : enchantments.getKeys(false)) {
-                String enchantName = enchantKey.toUpperCase();
-                int level = enchantments.getInt(enchantKey);
-                enchants.put(enchantName, level);
-            }
+        if (lore != null && !lore.isEmpty()) {
+            meta.lore(Chat.components(lore));
         }
 
-        if (itemSection.contains("durability")) {durability = itemSection.getInt("durability");}
-        if (itemSection.contains("trim-material")) {
-            String trimMaterialName = itemSection.getString("trim-material").toLowerCase();
-            trimMaterial = getTrimMaterialByName(trimMaterialName);
-        }
-
-        if (itemSection.contains("trim-pattern")) {
-            String trimPatternName = itemSection.getString("trim-pattern").toLowerCase();
-            trimPattern = getTrimPatternByName(trimPatternName);
-        }
-
-        if (itemSection.contains("effects")) {
-            var potionEffectsSection = itemSection.getConfigurationSection("effects");
-            potionEffects = loadPotionEffects(potionEffectsSection);
-        }
-
-        if (itemSection.contains("potion-color")) {
-            String colorString = itemSection.getString("potion-color");
-            if (colorString != null && !colorString.isEmpty()) {
-                potionColor = Color.fromRGB(Integer.parseInt(colorString.replace("#", ""), 16));
-            }
-        }
-
-        // Logger.info("Loading item: {0} - name {1}, count {2}, durability {3}, base item {4}", itemMaterial, itemName, count, durability, baseItem);
-
-        for (String enchantment : enchants.keySet()) {
-            Enchantment enchant = getEnchantmentByName(enchantment);
-            if (enchant == null) {continue;}
-            itemMeta.addEnchant(enchant, enchants.get(enchantment), true);
-        }
-
-        if (durability != null) {
-            if (durability <= 0) {
-                itemMeta.setUnbreakable(true);
-                itemMeta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
-            } else if (itemMeta instanceof Damageable damageable) {
-                itemMeta.setUnbreakable(false);
-                damageable.setDamage(itemStack.getType().getMaxDurability() - durability);
-            }
-        }
-
-        if (itemMeta instanceof ArmorMeta armorMeta) {
-            if (trimPattern != null && trimMaterial != null) {
-                armorMeta.setTrim(new ArmorTrim(trimMaterial, trimPattern));
-            } else if (trimMaterial != null) {
-                ArmorTrim trim = armorMeta.getTrim();
-                TrimPattern oldPattern = TrimPattern.BOLT;
-                if (trim != null) {oldPattern = trim.getPattern();}
-                armorMeta.setTrim(new ArmorTrim(trimMaterial, oldPattern));
-            } else if (trimPattern != null) {
-                ArmorTrim trim = armorMeta.getTrim();
-                TrimMaterial oldMaterial = TrimMaterial.DIAMOND;
-                if (trim != null) {oldMaterial = trim.getMaterial();}
-                armorMeta.setTrim(new ArmorTrim(oldMaterial, trimPattern));
-            }
-        }
-
-        if (itemMeta instanceof PotionMeta potionMeta) {
-            for (PotionEffect effect : potionEffects) {
-                potionMeta.addCustomEffect(effect, true);
-            }
-
-            if (potionColor != null) {
-                potionMeta.setColor(potionColor);
-            }
-        }
-
-        itemStack.setAmount(count);
-        itemStack.setItemMeta(itemMeta);
+        parseEnchantments(itemStack, section);
+        parseDurability(itemStack, section);
+        parseTrim(itemStack, section);
+        parsePotion(itemStack, section);
 
         return itemStack;
     }
 
-    public static ItemStack loadItemSection(ConfigurationSection itemSection) {
-        return loadItemSection(itemSection, null);
+    public static ItemStack loadLong(ConfigurationSection section) {
+        return loadLong(section, null);
     }
 
-    public static ItemTemplate loadConditionalItemSection(ConfigurationSection itemSection, HashMap<String, Predicate<Player>> conditions) {
-        if (itemSection == null) {return null;}
+    public static ItemSet loadSet(ConfigurationSection section) {
+        if (section == null) {return null;}
 
-        ItemTemplate template = new ItemTemplate();
-        ItemStack itemStack = loadItemSection(itemSection);
+        String itemId = section.getString("id", null);
+
+        if (itemId != null && itemId.equalsIgnoreCase("set")) {
+            List<ItemStack> items = new ArrayList<>();
+            ConfigurationSection itemsSection = section.getConfigurationSection("items");
+            if (itemsSection == null) {
+                Logger.warn("Item set section missing 'items' subsection - " + section.getCurrentPath() + ".");
+                return new ItemSet(GameLib.getItemStack());
+            }
+
+            for (String key : itemsSection.getKeys(false)) {
+                ConfigurationSection itemSection = itemsSection.getConfigurationSection(key);
+                ItemStack item;
+                
+                if (itemSection == null) {
+                    // Short version: `iron_sword * 64`
+                    item = loadShort(itemsSection.getString(key));
+                } else {
+                    // Full version: use loadLong method
+                    item = loadLong(itemSection);
+                }
+                
+                if (item != null) {
+                    items.add(item);
+                } else {
+                    Logger.warn("Failed to load item in set for key: " + key);
+                }
+            }
+
+            return new ItemSet(items);
+        } else {
+            return new ItemSet(loadLong(section));
+        }
+    }
+
+    public static ItemTemplate loadConditional(ConfigurationSection section, HashMap<String, Predicate<Player>> conditions) {
+        if (section == null) {return null;}
         
+        ItemTemplate template = new ItemTemplate();
+
         for (String conditionKey : conditions.keySet()) {
-            if (itemSection.contains(conditionKey)) {
-                ItemStack conditionalItemStack = loadItemSection(itemSection.getConfigurationSection(conditionKey), itemStack);
-                template.addItem(conditionalItemStack, conditions.get(conditionKey));
+            if (section.contains(conditionKey)) {
+                ItemStack conditionalItem = loadLong(section.getConfigurationSection(conditionKey), null);
+                template.addItem(conditionalItem, conditions.get(conditionKey));
             }
         }
-        
-        template.addItem(itemStack, player -> true);
 
         return template;
     }
+
+
+    private static void parseEnchantments(ItemStack itemStack, ConfigurationSection section) {
+        ConfigurationSection enchantmentsSection = section.getConfigurationSection("enchantments");
+        if (enchantmentsSection == null) {return;}
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        for (String enchantmentKey : enchantmentsSection.getKeys(false)) {
+            int level = enchantmentsSection.getInt(enchantmentKey, 1);
+            meta.addEnchant(ItemLoader.getEnchantmentByName(enchantmentKey), level, true);
+        }
+
+        itemStack.setItemMeta(meta);
+    }
+
+    private static void parseDurability(ItemStack itemStack, ConfigurationSection section) {
+        if (!section.contains("durability")) {return;}
+
+        int durability = section.getInt("durability", -1);
+        if (durability < 0) {return;}
+
+        ItemMeta meta = itemStack.getItemMeta();
+        
+        if (durability == 0) {
+            meta.setUnbreakable(true);
+        } else if (meta instanceof Damageable damageable) {
+            meta.setUnbreakable(false);
+            int maxDurability = itemStack.getType().getMaxDurability();
+            if (durability > maxDurability) {durability = maxDurability;}
+
+            damageable.setDamage(maxDurability - durability);
+        }
+
+        itemStack.setItemMeta(meta);
+    }
+
+    private static void parseTrim(ItemStack itemStack, ConfigurationSection section) {
+        if (!section.contains("trim-material") && !section.contains("trim-pattern")) {return;}
+
+        TrimMaterial trimMaterial = ItemLoader.getTrimMaterialByName(section.getString("trim-material", "").toLowerCase());
+        TrimPattern trimPattern = ItemLoader.getTrimPatternByName(section.getString("trim-pattern", "").toLowerCase());
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if (!(meta instanceof ArmorMeta armorMeta)) {return;}
+
+        if (trimMaterial != null && trimPattern != null) {
+            armorMeta.setTrim(new ArmorTrim(trimMaterial, trimPattern));
+        } else if (trimMaterial != null) {
+            armorMeta.setTrim(new ArmorTrim(trimMaterial, armorMeta.getTrim().getPattern()));
+        } else if (trimPattern != null) {
+            armorMeta.setTrim(new ArmorTrim(armorMeta.getTrim().getMaterial(), trimPattern));
+        }
+    }
+
+    private static void parsePotion(ItemStack itemStack, ConfigurationSection section) {
+        if (!section.contains("effects") && !section.contains("potion-color")) {return;}
+
+        ItemMeta meta = itemStack.getItemMeta();
+        if (!(meta instanceof PotionMeta potionMeta)) {return;}
+
+        ConfigurationSection effectsSection = section.getConfigurationSection("effects");
+        if (effectsSection != null) {
+            ItemLoader.loadPotionEffects(effectsSection).forEach(effect -> {
+                potionMeta.addCustomEffect(effect, true);
+            });
+        }
+
+        if (section.contains("potion-color")) {
+            String colorString = section.getString("potion-color", "#FFFFFF").replace("#", "").toUpperCase();
+
+            try {
+                Color potionColor = Color.fromRGB(Integer.parseInt(colorString, 16));
+                potionMeta.setColor(potionColor);
+            } catch (Exception e) {
+                Logger.error("Invalid potion color: " + colorString);
+            }
+        }
+
+        itemStack.setItemMeta(meta);
+    }
+
 
     public static List<PotionEffect> loadPotionEffects(ConfigurationSection effectsSection) {
         List<PotionEffect> potionEffects = new ArrayList<>();
@@ -261,16 +342,13 @@ public class ItemLoader {
                 var effectSection = effectsSection.getConfigurationSection(effectKey);
                 if (effectSection == null) {continue;}
 
-                String effectName = (effectKey.matches("^[a-z_]+$")) ? effectKey : effectSection.getString("type");
-                if (effectName == null || effectName.isEmpty()) {continue;}
                 int duration = effectSection.getInt("duration", 0);
                 int amplifier = effectSection.getInt("amplifier", 0);
                 boolean hide = effectSection.getBoolean("hide", false);
-                Logger.info("Loading potion effect: {0}", effectName);
 
-                PotionEffectType effectType = getPotionEffectTypeByName(effectName);
+                PotionEffectType effectType = getPotionEffectTypeByName(effectKey);
                 if (effectType == null) {
-                    Logger.error("Unknown potion effect type: {0}", effectName);
+                    Logger.error("Unknown potion effect type: {0}", effectKey);
                     continue;
                 }
                 
@@ -282,27 +360,72 @@ public class ItemLoader {
         return potionEffects;
     }
 
-    private static TrimMaterial getTrimMaterialByName(String name) {
+    public static TrimMaterial getTrimMaterialByName(String name) {
+        if (name == null || name.isEmpty()) {return null;}
         NamespacedKey key = Chat.namespacedKey(name.toLowerCase());
         Registry<TrimMaterial> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.TRIM_MATERIAL);
         return registry.get(key);
     }
 
-    private static TrimPattern getTrimPatternByName(String name) {
+    public static TrimPattern getTrimPatternByName(String name) {
+        if (name == null || name.isEmpty()) {return null;}
         NamespacedKey key = Chat.namespacedKey(name.toLowerCase());
         Registry<TrimPattern> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.TRIM_PATTERN);
         return registry.get(key);
     }
 
-    private static Enchantment getEnchantmentByName(String name) {
+    public static Enchantment getEnchantmentByName(String name) {
         NamespacedKey key = Chat.namespacedKey(name.toLowerCase(), true);
         Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
         return registry.get(key);
     }
 
-    private static PotionEffectType getPotionEffectTypeByName(String name) {
+    public static PotionEffectType getPotionEffectTypeByName(String name) {
         NamespacedKey key = Chat.namespacedKey(name.toLowerCase(), true);
         Registry<PotionEffectType> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.MOB_EFFECT);
         return registry.get(key);
+    }
+
+    public static Location getLocationFromSection(ConfigurationSection locationSection, World world) {
+        if (locationSection == null) {return null;}
+
+        double x = locationSection.getDouble("x", 0);
+        double y = locationSection.getDouble("y", 0);
+        double z = locationSection.getDouble("z", 0);
+        float yaw = (float) locationSection.getDouble("yaw", 0);
+        float pitch = (float) locationSection.getDouble("pitch", 0);
+        if (world == null) {
+            String worldName = locationSection.getString("world");
+            world = GameLib.getInstance().getServer().getWorld(worldName);
+        }
+
+        if (world == null) {return null;}
+        return new Location(world, x + 0.5, y, z + 0.5, yaw, pitch);
+    }
+
+    public static Location getLocationFromSection(ConfigurationSection locationSection) {
+        return getLocationFromSection(locationSection, null);
+    }
+
+    public static Location getLocationFromSequence(String sequence, World world) {
+        if (sequence == null || sequence.isEmpty() || world == null) {return null;}
+
+        String[] parts = sequence.split(",");
+        if (parts.length < 3) {return null;}
+
+        double x = Double.parseDouble(parts[0].trim());
+        double y = Double.parseDouble(parts[1].trim());
+        double z = Double.parseDouble(parts[2].trim());
+        float yaw = 0;
+        float pitch = 0;
+
+        if (parts.length == 5) {
+            yaw = Float.parseFloat(parts[3].trim());
+            pitch = Float.parseFloat(parts[4].trim());
+        }
+
+        if (parts.length == 4 || parts.length > 5) {return null;}
+
+        return new Location(world, x, y, z, yaw, pitch);
     }
 }
