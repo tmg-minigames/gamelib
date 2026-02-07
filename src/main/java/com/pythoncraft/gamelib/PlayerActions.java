@@ -52,7 +52,7 @@ public class PlayerActions {
         };
     }
 
-    public static BiConsumer<Player, HashSet<Player>> setupPlayerReset(List<PotionEffect> effects) {
+    public static BiConsumer<Player, HashSet<Player>> setupPlayerReset(Iterable<PotionEffect> effects) {
         return (Player player, HashSet<Player> players) -> {
             setGamemode(player, GameMode.SURVIVAL);
             setInertFalse(player);

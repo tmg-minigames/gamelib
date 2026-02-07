@@ -12,17 +12,36 @@ import org.bukkit.event.HandlerList;
 public class GameEndEvent extends Event {
     private static final HandlerList HANDLERS = new HandlerList();
     private final Player winner;
+    private final int endReason;
+
+    public static int MANUAL = 0;
+    public static int STOPPED = 1;
+    public static int GAME_END = 2;
+    public static int TIMEOUT = 3;
+
+    public GameEndEvent(Player winner, int endReason) {
+        this.winner = winner;
+        this.endReason = endReason;
+    }
 
     public GameEndEvent(Player winner) {
-        this.winner = winner;
+        this(winner, STOPPED);
+    }
+
+    public GameEndEvent(int endReason) {
+        this(null, endReason);
     }
 
     public GameEndEvent() {
-        this.winner = null;
+        this(null, STOPPED);
     }
 
     public Player getWinner() {
         return winner;
+    }
+
+    public int getEndReason() {
+        return endReason;
     }
 
     @Override

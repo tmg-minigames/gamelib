@@ -1,7 +1,6 @@
 package com.pythoncraft.gamelib;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -43,7 +42,7 @@ public class Chat {
         player.sendActionBar(component(message));
     }
 
-    public static void actionBar(HashSet<Player> players, String message) {
+    public static void actionBar(Iterable<Player> players, String message) {
         for (Player player : players) {actionBar(player, message);}
     }
 
@@ -51,7 +50,7 @@ public class Chat {
         player.sendMessage(c(message));
     }
 
-    public static void message(HashSet<Player> players, String message) {
+    public static void message(Iterable<Player> players, String message) {
         for (Player player : players) {message(player, message);}
     }
 
@@ -69,7 +68,7 @@ public class Chat {
         return Component.text(c(message));
     }
 
-    public static List<Component> components(List<String> messages) {
+    public static List<Component> components(Iterable<String> messages) {
         List<Component> components = new ArrayList<>();
         for (String msg : messages) {components.add(component(msg));}
         return components;

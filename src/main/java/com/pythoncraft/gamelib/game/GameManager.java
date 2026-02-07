@@ -240,7 +240,7 @@ public class GameManager implements Listener {
             this.isPreparing = false;
             this.isGame = true;
 
-            if (!isNewLocation || this.onPrepareEnd != null) {
+            if (isNewLocation && this.onPrepareEnd != null) {
                 for (Player player : playersInGame) {
                     this.onPrepareEnd.accept(player, playersInGame);
                 }
@@ -292,7 +292,7 @@ public class GameManager implements Listener {
             }, () -> {
                 // Game over
                 this.isGame = false;
-                Bukkit.getPluginManager().callEvent(new GameEndEvent(null));
+                Bukkit.getPluginManager().callEvent(new GameEndEvent(null, GameEndEvent.TIMEOUT));
             });
         } else {
             Logger.info("Starting infinite game timer.");
@@ -305,7 +305,7 @@ public class GameManager implements Listener {
         this.timer.start();
     }
 
-    public void stopGame() {
+    public void stopGame(boolean isNewLocation) {
         if (this.timer != null) {
             this.timer.cancel();
             this.timer = null;
@@ -315,19 +315,25 @@ public class GameManager implements Listener {
         this.isPreparing = false;
         this.isGracePeriod = false;
 
-        if (this.bossbar != null) {
-            this.bossbar.removeAll();
-        }
-
-        for (Player player : playersInGame) {
-            if (this.onPrepareEnd != null) {
-                this.onPrepareEnd.accept(player, playersInGame);
+        if (isNewLocation) {
+            if (this.bossbar != null) {
+                this.bossbar.removeAll();
             }
+            
+            for (Player player : playersInGame) {
+                if (this.onPrepareEnd != null) {
+                    this.onPrepareEnd.accept(player, playersInGame);
+                }
+            }
+            
+            if (this.world != null) {this.world.getWorldBorder().reset();}
         }
 
-        if (this.world != null) {this.world.getWorldBorder().reset();}
+        Bukkit.getPluginManager().callEvent(new GameEndEvent(null, GameEndEvent.STOPPED));
+    }
 
-        Bukkit.getPluginManager().callEvent(new GameEndEvent(null));
+    public void stopGame() {
+        stopGame(true);
     }
 
     public int findNextGame(World world, int start) {
@@ -375,7 +381,7 @@ public class GameManager implements Listener {
     }
 
     public Location getSpectatorLocation() {
-        return getSpectatorLocation(20);
+        return getSpectatorLocation(world.getHighestBlockYAt(getGameLocation()) + 20);
     }
 
     public Location getNextGameLocation() {
@@ -386,10 +392,10 @@ public class GameManager implements Listener {
 
     public void checkForGameEnd(Player player) {
         if (this.playersInGame.size() == 1 && this.isGame && !this.isGracePeriod) {
-            Bukkit.getPluginManager().callEvent(new GameEndEvent(player));
+            Bukkit.getPluginManager().callEvent(new GameEndEvent(player, GameEndEvent.GAME_END));
             this.stopGame();
         } else if (this.playersInGame.size() == 0 && this.isGame && !this.isGracePeriod) {
-            Bukkit.getPluginManager().callEvent(new GameEndEvent(null));
+            Bukkit.getPluginManager().callEvent(new GameEndEvent(null, GameEndEvent.GAME_END));
             this.stopGame();
         }
     }
