@@ -97,7 +97,6 @@ public class GameManager implements Listener {
     public void setGameTime(int gameTimeSec) {setGameTime(gameTimeSec, 0, 0);}
 
     public void setBorder(int borderSize, int borderDamageAmount, int borderWarnDistance) {
-        Logger.info("Setting world border size to {0}", borderSize);
         this.borderSize = borderSize;
         this.borderDamageAmount = borderDamageAmount;
         this.borderWarnDistance = borderWarnDistance;
@@ -142,67 +141,106 @@ public class GameManager implements Listener {
         }
     }
 
-    public void startGame(World world) {
-        Logger.info("Starting a new game: {0}", this.currentGame);
-        this.playersInGame = new HashSet<>(Bukkit.getOnlinePlayers());
-        this.world = world;
-        this.currentGame = this.nextGame;
-        this.nextGame = this.findNextGame(world, this.currentGame + 1);
+    public void startGame(World world, boolean isNewLocation) {
+        if (isNewLocation) {
+            Logger.info("Starting a new game: {0}", this.currentGame);
+            this.playersInGame = new HashSet<>(Bukkit.getOnlinePlayers());
+            this.world = world;
+            this.currentGame = this.nextGame;
+            this.nextGame = this.findNextGame(world, this.currentGame + 1);
 
-        this.removeBossbar();
-        this.bossbar = Bukkit.createBossBar("", this.bossbarColor, this.bossbarStyle);
+            this.removeBossbar();
+            this.bossbar = Bukkit.createBossBar("", this.bossbarColor, this.bossbarStyle);
 
-        Logger.info("Saving current game number {0} to config file.", this.currentGame);
-        this.config.set(this.gameNumberLabel, this.currentGame);
+            this.config.set(this.gameNumberLabel, this.currentGame);
 
-        try {
-            this.config.save(this.configFile);
-        } catch (Exception e) {
-            Logger.error("Could not save game config file: {0}", e.getMessage());
-        }
+            try {
+                this.config.save(this.configFile);
+            } catch (Exception e) {
+                Logger.error("Could not save game config file: {0}", e.getMessage());
+            }
 
-        this.x = this.nextGame * this.gap;
-        this.z = 0;
-        this.y = world.getHighestBlockYAt(this.x, this.z);
+            this.x = this.nextGame * this.gap;
+            this.z = 0;
+            this.y = world.getHighestBlockYAt(this.x, this.z);
 
-        if (this.isWater(world, this.x, this.y, this.z)) {
-            world.getBlockAt(this.x, this.y + 1, this.z).setType(Material.LILY_PAD);
-        }
+            if (this.isWater(world, this.x, this.y, this.z)) {
+                world.getBlockAt(this.x, this.y + 1, this.z).setType(Material.LILY_PAD);
+            }
 
-        if (this.borderSize > 0) {
-            WorldBorder border = world.getWorldBorder();
-            border.setCenter(this.x, this.z);
-            border.setSize(this.borderSize);
-            border.setDamageAmount(this.borderDamageAmount);
-            border.setWarningDistance(this.borderWarnDistance);
+            if (this.borderSize > 0) {
+                WorldBorder border = world.getWorldBorder();
+                border.setCenter(this.x, this.z);
+                border.setSize(this.borderSize);
+                border.setDamageAmount(this.borderDamageAmount);
+                border.setWarningDistance(this.borderWarnDistance);
+            }
+    
+            for (Player player : playersInGame) {
+                if (this.onPrepareStart != null) {
+                    this.onPrepareStart.accept(player, playersInGame);
+                }
+    
+                this.bossbar.addPlayer(player);
+    
+                player.teleport(new Location(world, this.x + 0.5, this.y + 1.09375, this.z + 0.5));
+            }
         }
 
         Bukkit.getPluginManager().callEvent(new GamePrepareEvent());
-
-        for (Player player : playersInGame) {
-            if (this.onPrepareStart != null) {
-                this.onPrepareStart.accept(player, playersInGame);
-            }
-
-            this.bossbar.addPlayer(player);
-
-            player.teleport(new Location(world, this.x + 0.5, this.y + 1.09375, this.z + 0.5));
-        }
 
         this.isPreparing = (this.prepareTimeSec > 0);
         this.isGame = !this.isPreparing;
         this.isGracePeriod = this.isGame && (this.gracePeriodSec > 0);
 
-        this.timer = new Timer(prepareTimeSec * 20, 20, (secondsLeft) -> {
-            // Prepare time tick
-            Bukkit.getPluginManager().callEvent(new TickEvent(true, secondsLeft, this.prepareTimeSec));
-        }, () -> {
-            Logger.info("Prepare time is over, starting the game.");
-            // Prepare time is over, start the game
+        if (isNewLocation && this.prepareTimeSec > 0) {
+            this.timer = new Timer(prepareTimeSec * 20, 20, (secondsLeft) -> {
+                // Prepare time tick
+                Bukkit.getPluginManager().callEvent(new TickEvent(true, secondsLeft, this.prepareTimeSec));
+            }, () -> {
+                Logger.info("Prepare time is over, starting the game.");
+                // Prepare time is over, start the game
+                this.isPreparing = false;
+                this.isGame = true;
+
+                if (this.onPrepareEnd != null) {
+                    for (Player player : playersInGame) {
+                        this.onPrepareEnd.accept(player, playersInGame);
+                    }
+                }
+
+                if (this.gracePeriodSec > 0) {
+                    Logger.info("Starting grace period timer for {0} seconds.", this.gracePeriodSec);
+                    // Start grace period
+                    this.isGracePeriod = true;
+
+                    this.timer = new Timer(this.gracePeriodSec * 20, 20, (secondsLeft) -> {
+                        Bukkit.getPluginManager().callEvent(new TickEvent(true, secondsLeft, this.gracePeriodSec, true));
+                    }, () -> {
+                        Logger.info("Grace period is over.");
+                        this.isGracePeriod = false;
+                        Bukkit.getPluginManager().callEvent(new GracePeriodEndEvent());
+
+                        this.gameStarted();
+                    });
+
+                    this.timer.start();
+                } else {
+                    Logger.info("No grace period, starting the game immediately.");
+                    // No grace period, start the game immediately
+                    this.gameStarted();
+                }
+            });
+
+            Logger.info("Starting prepare timer for {0} seconds.", this.prepareTimeSec);
+            this.timer.start();
+        } else {
+            Logger.info("Skipping prepare time (0 seconds), starting the game.");
+            // No prepare time, start the game immediately
             this.isPreparing = false;
             this.isGame = true;
 
-            if (this.onPrepareEnd != null) {
+            if (!isNewLocation || this.onPrepareEnd != null) {
                 for (Player player : playersInGame) {
                     this.onPrepareEnd.accept(player, playersInGame);
                 }
@@ -229,18 +267,22 @@ public class GameManager implements Listener {
                 // No grace period, start the game immediately
                 this.gameStarted();
             }
-        });
+        }
+    }
 
-        Logger.info("Starting prepare timer for {0} seconds.", this.prepareTimeSec);
-        this.timer.start();
+    public void startGame(World world) {
+        startGame(world, true);
     }
 
     public void gameStarted() {
         Logger.info("Game started.");
+        this.isGracePeriod = false;
         Bukkit.getPluginManager().callEvent(new GameStartEvent());
 
-        this.timer.cancel();
-        this.timer = null;
+        if (this.timer != null) {
+            this.timer.cancel();
+            this.timer = null;
+        }
 
         if (this.gameTimeSec > 0) {
             Logger.info("Starting finite game timer.");

@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import com.pythoncraft.gamelib.GameLib;
+import com.pythoncraft.gamelib.Logger;
 
 public class ItemTemplate {
     public List<ConditionalItem> items = new ArrayList<>();
@@ -35,11 +36,13 @@ public class ItemTemplate {
             return GameLib.getItemStack("§c§o§lItemTemplate index out of bounds");
         }
 
-        return items.get(index).getItem();
+        return this.items.get(index).getItem();
     }
 
     public ItemStack getFor(Player player) {
-        for (ConditionalItem conditionalItem : items) {
+        Logger.info("Getting item for player {0} from template with {1} items.", player.getName(), this.items.size());
+
+        for (ConditionalItem conditionalItem : this.items) {
             if (conditionalItem.test(player)) {
                 return conditionalItem.getItem();
             }
@@ -50,9 +53,9 @@ public class ItemTemplate {
 
     public void addItem(ConditionalItem item, boolean placeAtBeginning) {
         if (placeAtBeginning) {
-            items.add(0, item); // Add to the beginning of the list
+            this.items.add(0, item); // Add to the beginning of the list
         } else {
-            items.add(item); // Add to the end of the list
+            this.items.add(item); // Add to the end of the list
         }
     }
 

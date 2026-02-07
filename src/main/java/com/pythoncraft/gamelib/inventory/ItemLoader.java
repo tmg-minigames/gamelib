@@ -97,18 +97,18 @@ public class ItemLoader {
         return new ArrayList<>(loadItemSetsMap(itemsSection).values());
     }
 
-    public static HashMap<String, ItemTemplate> loadConditionalItemsMap(ConfigurationSection templatesSection, HashMap<String, Predicate<Player>> conditions) {
+    public static HashMap<String, ItemTemplate> loadConditionalItemsMap(ConfigurationSection itemsSection, HashMap<String, Predicate<Player>> conditions) {
         HashMap<String, ItemTemplate> templates = new HashMap<>();
-        if (templatesSection == null) {return templates;}
+        if (itemsSection == null) {return templates;}
 
-        for (String itemKey : templatesSection.getKeys(false)) {
+        for (String itemKey : itemsSection.getKeys(false)) {
             ItemTemplate template;
 
-            ConfigurationSection itemSection = templatesSection.getConfigurationSection(itemKey);
+            ConfigurationSection itemSection = itemsSection.getConfigurationSection(itemKey);
             
             if (itemSection == null) {
                 // Short version: `stick * 64`
-                template = new ItemTemplate(loadShort(templatesSection.getString(itemKey)));
+                template = new ItemTemplate(loadShort(itemsSection.getString(itemKey)));
             } else {
                 // Full version
                 template = loadConditional(itemSection, conditions);
@@ -125,8 +125,8 @@ public class ItemLoader {
         return templates;
     }
 
-    public static List<ItemTemplate> loadConditionalItems(ConfigurationSection templatesSection, HashMap<String, Predicate<Player>> conditions) {
-        return new ArrayList<>(loadConditionalItemsMap(templatesSection, conditions).values());
+    public static List<ItemTemplate> loadConditionalItems(ConfigurationSection itemsSection, HashMap<String, Predicate<Player>> conditions) {
+        return new ArrayList<>(loadConditionalItemsMap(itemsSection, conditions).values());
     }
 
 
@@ -241,12 +241,18 @@ public class ItemLoader {
         
         ItemTemplate template = new ItemTemplate();
 
+        ItemStack defaultItem = loadLong(section);
+        template.addItem(defaultItem, player -> true);
+
         for (String conditionKey : conditions.keySet()) {
             if (section.contains(conditionKey)) {
-                ItemStack conditionalItem = loadLong(section.getConfigurationSection(conditionKey), null);
+                Logger.info("Found condition {0} for item template at {1}.", conditionKey, section.getCurrentPath());
+                ItemStack conditionalItem = loadLong(section.getConfigurationSection(conditionKey), defaultItem);
                 template.addItem(conditionalItem, conditions.get(conditionKey));
             }
         }
+
+        Logger.info("Loaded item template with {0} conditional items: {1}", template.items.size(), section.getCurrentPath());
 
         return template;
     }

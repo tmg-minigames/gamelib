@@ -21,7 +21,7 @@ public class TickEvent extends Event {
     }
 
     public TickEvent(boolean _x, int remainingSeconds, int totalSeconds, boolean isGracePeriod) {
-        this(totalSeconds - remainingSeconds, totalSeconds, true); 
+        this(totalSeconds - remainingSeconds, totalSeconds, isGracePeriod);
     }
 
     public TickEvent(boolean _x, int remainingSeconds, int totalSeconds) {
