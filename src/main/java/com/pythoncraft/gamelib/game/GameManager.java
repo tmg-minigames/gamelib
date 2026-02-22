@@ -336,6 +336,10 @@ public class GameManager implements Listener {
         stopGame(true);
     }
 
+    public long playersOnlineCount() {
+        return this.playersInGame.stream().filter(p -> p.isOnline()).count();
+    }
+
     public int findNextGame(World world, int start) {
         int g = start;
 

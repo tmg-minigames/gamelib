@@ -4,7 +4,7 @@
 
     <groupId>com.pythoncraft.gamelib</groupId>
     <artifactId>gamelib</artifactId>
-    <version>3.2</version>
+    <version>4.0</version>
     <!-- DO NOT FORGET TO UPDATE THE VERSION -->
 
     <properties>
@@ -14,47 +14,15 @@
     </properties>
 
     <repositories>
-        <repository><id>papermc</id><url>https://repo.papermc.io/repository/maven-public/</url></repository>
+        <repository><id>spigot-repo</id><url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url></repository>
     </repositories>
 
     <dependencies>
         <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.21-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.papermc.paper</groupId>
-                    <artifactId>paper-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.spigotmc</groupId>
-                    <artifactId>spigot-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.bukkit</groupId>
-                    <artifactId>bukkit</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>

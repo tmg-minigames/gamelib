@@ -2,7 +2,6 @@ package com.pythoncraft.gamelib;
 
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.bukkit.Bukkit;
@@ -76,7 +75,7 @@ public class PlayerActions {
     }
 
     public static double getMaxHealth(Player player) {
-        return player.getAttribute(Attribute.MAX_HEALTH).getValue();
+        return player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
     }
 
     public static void resetHunger(Player player) {
@@ -86,7 +85,7 @@ public class PlayerActions {
     }
 
     public static void clearEffects(Player player) {
-        player.clearActivePotionEffects();
+        player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType()));
     }
 
     public static void clearInventory(Player player) {
@@ -142,7 +141,7 @@ public class PlayerActions {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
         meta.setOwningPlayer(p);
-        meta.displayName(Chat.component(p.getName()));
+        meta.setDisplayName(Chat.c(p.getName()));
         head.setItemMeta(meta);
         return head;
     }

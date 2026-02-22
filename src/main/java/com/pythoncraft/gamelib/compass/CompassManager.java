@@ -43,7 +43,7 @@ public class CompassManager implements Listener {
         instance = this;
 
         GUIManager.getInstance().register("compassMenu", true, (player) -> {
-            Inventory inventory = Bukkit.createInventory(new GUIIdentifier("compassMenu"), 27, Chat.component("§lTracking Compass Menu"));
+            Inventory inventory = Bukkit.createInventory(new GUIIdentifier("compassMenu"), 27, Chat.c("§lTracking Compass Menu"));
 
             int i = 0;
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -198,7 +198,7 @@ public class CompassManager implements Listener {
 
         if (clickedItem == null || clickedItem.getType() != Material.PLAYER_HEAD) {return;}
 
-        String trackedName = Chat.string(clickedItem.getItemMeta().displayName());
+        String trackedName = clickedItem.getItemMeta().getDisplayName();
         Player trackedPlayer = Bukkit.getPlayerExact(trackedName);
 
         if (trackedPlayer == null || !trackedPlayer.isOnline()) {

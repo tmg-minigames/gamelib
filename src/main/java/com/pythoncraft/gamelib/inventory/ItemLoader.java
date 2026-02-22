@@ -29,9 +29,6 @@ import com.pythoncraft.gamelib.Chat;
 import com.pythoncraft.gamelib.GameLib;
 import com.pythoncraft.gamelib.Logger;
 
-import io.papermc.paper.registry.RegistryAccess;
-import io.papermc.paper.registry.RegistryKey;
-
 public class ItemLoader {
     public static HashMap<String, ItemStack> loadItemsMap(ConfigurationSection itemsSection) {
         HashMap<String, ItemStack> items = new HashMap<>();
@@ -179,11 +176,11 @@ public class ItemLoader {
         ItemMeta meta = itemStack.getItemMeta();
 
         if (customName != null && !customName.isEmpty()) {
-            meta.displayName(Chat.component(customName));
+            meta.setDisplayName(Chat.c(customName));
         }
 
         if (lore != null && !lore.isEmpty()) {
-            meta.lore(Chat.components(lore));
+            meta.setLore(lore);
         }
 
         parseEnchantments(itemStack, section);
@@ -368,28 +365,20 @@ public class ItemLoader {
 
     public static TrimMaterial getTrimMaterialByName(String name) {
         if (name == null || name.isEmpty()) {return null;}
-        NamespacedKey key = Chat.namespacedKey(name.toLowerCase());
-        Registry<TrimMaterial> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.TRIM_MATERIAL);
-        return registry.get(key);
+        return Registry.TRIM_MATERIAL.get(NamespacedKey.minecraft(name.toLowerCase()));
     }
 
     public static TrimPattern getTrimPatternByName(String name) {
         if (name == null || name.isEmpty()) {return null;}
-        NamespacedKey key = Chat.namespacedKey(name.toLowerCase());
-        Registry<TrimPattern> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.TRIM_PATTERN);
-        return registry.get(key);
+        return Registry.TRIM_PATTERN.match(name.toLowerCase());
     }
 
     public static Enchantment getEnchantmentByName(String name) {
-        NamespacedKey key = Chat.namespacedKey(name.toLowerCase(), true);
-        Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
-        return registry.get(key);
+        return Registry.ENCHANTMENT.get(NamespacedKey.minecraft(name.toLowerCase()));
     }
 
     public static PotionEffectType getPotionEffectTypeByName(String name) {
-        NamespacedKey key = Chat.namespacedKey(name.toLowerCase(), true);
-        Registry<PotionEffectType> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.MOB_EFFECT);
-        return registry.get(key);
+        return Registry.EFFECT.get(NamespacedKey.minecraft(name.toLowerCase()));
     }
 
     public static Location getLocationFromSection(ConfigurationSection locationSection, World world) {

@@ -108,7 +108,7 @@ public class TrackingCompass {
         ItemStack compass = new ItemStack(Material.COMPASS);
         ItemMeta meta = compass.getItemMeta();
         
-        meta.displayName(Chat.component("§d§lTracking Compass"));
+        meta.setDisplayName(Chat.c("§d§lTracking Compass"));
         meta.getPersistentDataContainer().set(isCompassKey, PersistentDataType.BOOLEAN, true);
         meta.getPersistentDataContainer().set(compassUUIDKey, PersistentDataType.STRING, uuid);
 

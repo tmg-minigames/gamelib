@@ -1,8 +1,8 @@
 package com.pythoncraft.gamelib;
 
 import java.util.HashSet;
-import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
@@ -17,7 +17,7 @@ public class Score {
         if (scoreboard.getObjective(name) != null) {
             scoreboard.getObjective(name).unregister();
         }
-        this.objective = scoreboard.registerNewObjective(name, Criteria.DUMMY, Chat.component(displayName));
+        this.objective = scoreboard.registerNewObjective(name, Criteria.DUMMY, Chat.c(displayName));
     }
 
     public Score(String name) {
@@ -25,7 +25,7 @@ public class Score {
     }
 
     public void setDisplayName(String displayName) {
-        this.objective.displayName(Chat.component(displayName));
+        this.objective.setDisplayName(displayName);
     }
 
     public void setDisplaySlot(DisplaySlot slot) {
@@ -48,6 +48,10 @@ public class Score {
         for (Player player : players) {this.setScore(player, score);}
     }
 
+    public void setScoreToAll(int score) {
+        for (Player player : Bukkit.getOnlinePlayers()) {this.setScore(player, score);}
+    }
+
     public void addScore(String entry, int increment) {
         this.objective.getScore(entry).setScore(this.getScore(entry) + increment);
     }
@@ -62,6 +66,16 @@ public class Score {
 
     public int getScore(Player player) {
         return this.getScore(player.getName());
+    }
+
+    public void setScoreIfAbsent(String entry, int score) {
+        if (!this.objective.getScoreboard().getEntries().contains(entry)) {
+            this.setScore(entry, score);
+        }
+    }
+
+    public void setScoreIfAbsent(Player player, int score) {
+        this.setScoreIfAbsent(player.getName(), score);
     }
 
     public void resetScores() {

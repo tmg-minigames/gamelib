@@ -7,8 +7,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
 
 public class Chat {
     public static String BLACK       = "§0";
@@ -39,7 +40,7 @@ public class Chat {
     }
 
     public static void actionBar(Player player, String message) {
-        player.sendActionBar(component(message));
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, component(message));
     }
 
     public static void actionBar(Iterable<Player> players, String message) {
@@ -55,21 +56,21 @@ public class Chat {
     }
 
     public static void broadcast(String message) {
-        Bukkit.getServer().broadcast(component(message));
+        Bukkit.getServer().broadcast(message, "*");
     }
 
 
 
-    public static String string(Component component) {
-        return PlainTextComponentSerializer.plainText().serialize(component);
+    public static String string(BaseComponent component) {
+        return component.toPlainText();
     }
 
-    public static Component component(String message) {
-        return Component.text(c(message));
+    public static BaseComponent component(String message) {
+        return TextComponent.fromLegacy(c(message));
     }
 
-    public static List<Component> components(Iterable<String> messages) {
-        List<Component> components = new ArrayList<>();
+    public static List<BaseComponent> components(Iterable<String> messages) {
+        List<BaseComponent> components = new ArrayList<>();
         for (String msg : messages) {components.add(component(msg));}
         return components;
     }

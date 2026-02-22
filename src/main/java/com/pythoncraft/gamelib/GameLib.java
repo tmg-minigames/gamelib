@@ -3,7 +3,9 @@ package com.pythoncraft.gamelib;
 import java.io.File;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.GameRule;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -14,8 +16,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
-
-import net.kyori.adventure.text.format.NamedTextColor;
 
 
 public class GameLib extends JavaPlugin {
@@ -48,7 +48,7 @@ public class GameLib extends JavaPlugin {
         ItemMeta meta = itemStack.getItemMeta();
 
         if (displayName != null && !displayName.isEmpty()) {
-            meta.displayName(Chat.component(displayName));
+            meta.setDisplayName(Chat.c(displayName));
         }
 
         itemStack.setItemMeta(meta);
@@ -108,14 +108,27 @@ public class GameLib extends JavaPlugin {
         });
     }
 
-    public static Team createTeam(String id, String displayName, NamedTextColor color) {
+    public static Team createTeam(String id, String displayName, ChatColor color) {
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         Team team = scoreboard.getTeam(id);
         if (team != null) {team.unregister();}
         
         team = scoreboard.registerNewTeam(id);
-        team.displayName(Chat.component(displayName));
-        team.color(color);
+        team.setDisplayName(Chat.c(displayName));
+        team.setColor(color);;
         return team;
+    }
+
+    public static boolean setGamerule(World world, String[] rules, boolean value) {
+        for (String rule : rules) {
+            try {
+                GameRule<Boolean> gameRule = (GameRule<Boolean>) GameRule.getByName(rule);
+                world.setGameRule(gameRule, value);
+                return true;
+            } catch (IllegalArgumentException e) {}
+        }
+
+        Logger.warn("Failed to set gamerule. Tried: " + String.join(", ", rules));
+        return false;
     }
 }
