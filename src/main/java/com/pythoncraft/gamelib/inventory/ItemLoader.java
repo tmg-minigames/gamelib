@@ -30,6 +30,16 @@ import com.pythoncraft.gamelib.GameLib;
 import com.pythoncraft.gamelib.Logger;
 
 public class ItemLoader {
+    public static HashMap<String, String> getEntries(ConfigurationSection section) {
+        HashMap<String, String> entries = new HashMap<>();
+        for (String key : section.getKeys(false)) {
+            if (!section.isConfigurationSection(key)) {
+                entries.put(key, section.getString(key));
+            }
+        }
+        return entries;
+    }
+
     public static HashMap<String, ItemStack> loadItemsMap(ConfigurationSection itemsSection) {
         HashMap<String, ItemStack> items = new HashMap<>();
         if (itemsSection == null) {return items;}
@@ -205,7 +215,7 @@ public class ItemLoader {
             ConfigurationSection itemsSection = section.getConfigurationSection("items");
             if (itemsSection == null) {
                 Logger.warn("Item set section missing 'items' subsection - " + section.getCurrentPath() + ".");
-                return new ItemSet(GameLib.getItemStack());
+                return new ItemSet(GameLib.getItemStack(), getEntries(section));
             }
 
             for (String key : itemsSection.getKeys(false)) {
@@ -227,9 +237,9 @@ public class ItemLoader {
                 }
             }
 
-            return new ItemSet(items);
+            return new ItemSet(items, getEntries(section));
         } else {
-            return new ItemSet(loadLong(section));
+            return new ItemSet(loadLong(section), getEntries(section));
         }
     }
 

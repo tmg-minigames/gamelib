@@ -122,6 +122,7 @@ public class GameLib extends JavaPlugin {
     public static boolean setGamerule(World world, String[] rules, boolean value) {
         for (String rule : rules) {
             try {
+                @SuppressWarnings("unchecked")
                 GameRule<Boolean> gameRule = (GameRule<Boolean>) GameRule.getByName(rule);
                 world.setGameRule(gameRule, value);
                 return true;
