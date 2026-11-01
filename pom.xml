@@ -4,7 +4,7 @@
 
     <groupId>com.pythoncraft.gamelib</groupId>
     <artifactId>gamelib</artifactId>
-    <version>4.2</version>
+    <version>4.3</version>
     <!-- DO NOT FORGET TO UPDATE THE VERSION -->
 
     <properties>

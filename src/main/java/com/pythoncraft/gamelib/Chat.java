@@ -65,7 +65,8 @@ public class Chat {
     }
 
     public static void broadcast(String message) {
-        Bukkit.getServer().broadcast(message, "*");
+        message(message);
+        Logger.info(message);
     }
 
     public static void playSound(Player player, Sound sound, float volume, float pitch) {

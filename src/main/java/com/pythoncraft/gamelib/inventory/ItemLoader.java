@@ -310,13 +310,18 @@ public class ItemLoader {
 
         if (!(meta instanceof ArmorMeta armorMeta)) {return;}
 
+        ArmorTrim existingTrim = armorMeta.getTrim();
         if (trimMaterial != null && trimPattern != null) {
             armorMeta.setTrim(new ArmorTrim(trimMaterial, trimPattern));
+        } else if (existingTrim == null) {
+            Logger.warn("Cannot apply partial armor trim without an existing trim - " + section.getCurrentPath() + ".");
         } else if (trimMaterial != null) {
-            armorMeta.setTrim(new ArmorTrim(trimMaterial, armorMeta.getTrim().getPattern()));
+            armorMeta.setTrim(new ArmorTrim(trimMaterial, existingTrim.getPattern()));
         } else if (trimPattern != null) {
-            armorMeta.setTrim(new ArmorTrim(armorMeta.getTrim().getMaterial(), trimPattern));
+            armorMeta.setTrim(new ArmorTrim(existingTrim.getMaterial(), trimPattern));
         }
+
+        itemStack.setItemMeta(armorMeta);
     }
 
     private static void parsePotion(ItemStack itemStack, ConfigurationSection section) {
